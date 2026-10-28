@@ -137,8 +137,13 @@ void OnFrameUpdate() {
         // We are inside the arena.
         if (!sSession.arenaEntered) {
             SPDLOG_INFO("[OAV] arena entered (scene {})", gPlayState->sceneNum);
+            Interface_ChangeHudVisibilityMode(HUD_VISIBILITY_ALL);
         }
         sSession.arenaEntered = true;
+        // Re-assert the HUD in case a cutscene flag hides it again.
+        if ((sSession.frames % 60) == 1) {
+            Interface_ChangeHudVisibilityMode(HUD_VISIBILITY_ALL);
+        }
     } else if (sSession.arenaEntered) {
         // We left the arena without ending the run (e.g. via a grotto or a
         // developer warp). End the session rather than corrupting state.
@@ -196,6 +201,10 @@ void OAV_StartRun() {
 
     // Reset any previous session.
     OAV::sSession.Reset();
+    // The built-in HUD gameplay timer (Interface_DrawTotalGameplayTimer)
+    // shows stats.playTimer; zero it so it tracks this run from the start.
+    gSaveContext.ship.stats.playTimer = 0;
+    gSaveContext.ship.stats.gameComplete = 0;
     OAV::ResetWeaponScheduler();
     OAV::sSession.arena = static_cast<OAV::Arena>(OAV::GetArenaSetting());
     OAV::sSession.difficulty = static_cast<OAV::Difficulty>(OAV::GetDifficultySetting());

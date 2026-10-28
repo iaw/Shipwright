@@ -36,15 +36,9 @@ void DrawHud(Session& session) {
                          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
-        uint32_t totalSeconds = session.frames / 20;
-        uint32_t minutes = totalSeconds / 60;
-        uint32_t seconds = totalSeconds % 60;
-
-        ImGui::Text("Oops! All Vampires?");
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.3f, 1.0f), "%u:%02u", minutes, seconds);
-
-        ImGui::SameLine();
+        // Hearts and the run timer come from the built-in HUD (vanilla hearts +
+        // Interface_DrawTotalGameplayTimer); this strip only carries the stats
+        // that have no built-in widget.
         ImGui::Text("LV %u", session.level);
 
         ImGui::SameLine();

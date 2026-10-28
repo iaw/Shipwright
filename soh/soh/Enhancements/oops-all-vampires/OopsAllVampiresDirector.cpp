@@ -133,8 +133,10 @@ void SpawnEnemy(const EnemyDef* def) {
         return;
     }
 
-    // Spawn on a ring around the player, slightly ahead of the camera.
-    constexpr f32 radius = 650.0f;
+    // Spawn on a ring around the player, just outside the visible screen
+    // (the field camera sees roughly 300-400 units around Link) so enemies
+    // stream in from the screen edge instead of popping in far off-screen.
+    constexpr f32 radius = 430.0f;
     f32 angle = Rand_ZeroOne() * 6.28318f;
     Vec3f pos;
     pos.x = player->actor.world.pos.x + cosf(angle) * radius;
@@ -260,14 +262,25 @@ void UpdateGems() {
         }
         EnItem00* item = (EnItem00*)actor;
 
-        // Keep the gem alive until collected (never auto-despawn).
-        item->unk_15A = 220;
-
-        // Vacuum: pull nearby gems toward the player.
         f32 dx = player->actor.world.pos.x - actor->world.pos.x;
         f32 dz = player->actor.world.pos.z - actor->world.pos.z;
         f32 dist = sqrtf(dx * dx + dz * dz);
-        if (dist < magnetRadius && dist > 1.0f) {
+
+        // Within pickup range: hands off. The game collects the gem on its
+        // next update (which resets the timer and kills the actor, firing
+        // our XP hook). Touching it here would keep it alive forever.
+        if (dist <= 30.0f) {
+            continue;
+        }
+
+        // Keep the gem alive until collected (never auto-despawn), as long
+        // as it is anywhere near the play area.
+        if (dist < 800.0f) {
+            item->unk_15A = 220;
+        }
+
+        // Vacuum: pull gems toward the player within the magnet radius.
+        if (dist < magnetRadius) {
             f32 speed = 60.0f;
             actor->world.pos.x += (dx / dist) * speed;
             actor->world.pos.z += (dz / dist) * speed;
@@ -391,6 +404,13 @@ void RegisterDirectorHooks() {
     COND_HOOK(OnPlayerHealthChange, true, OnPlayerHealthChangeHandler);
     COND_HOOK(ShouldActorUpdate, true, ShouldActorUpdateHandler);
     COND_HOOK(ShouldActorInit, true, ShouldActorInitHandler);
+
+    // Show the built-in HUD gameplay timer (run time) while a run is active.
+    REGISTER_VB_SHOULD(VB_SHOW_GAMEPLAY_TIMER, {
+        if (IsSessionActive()) {
+            *should = true;
+        }
+    });
 }
 
 } // namespace
