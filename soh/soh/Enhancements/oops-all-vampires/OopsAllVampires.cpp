@@ -2,8 +2,11 @@
 #include <array>
 #include <iterator>
 
+#include <cstdlib>
+
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <ship/Context.h>
+#include <spdlog/spdlog.h>
 #include <fast/Fast3dGui.h>
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
@@ -80,11 +83,61 @@ uint32_t XpForLevelImpl(uint32_t level) {
 // Run bookkeeping ------------------------------------------------------------
 
 void OnFrameUpdate() {
+    // Test hook: OAV_AUTOSTART=1 launches a run a few seconds after boot
+    // (used for headless smoke testing; no effect in normal play).
+    if (sSession.state == SessionState::INACTIVE) {
+        static bool sAutostart = getenv("OAV_AUTOSTART") != nullptr;
+        static uint32_t sBootDelay = 400; // ~20s after boot
+        if (sAutostart && sBootDelay > 0 && --sBootDelay == 0) {
+            SPDLOG_INFO("[OAV] autostart: launching run");
+            OAV_StartRun();
+        }
+        return;
+    }
+
+    // Test hook: OAV_AUTOLEVEL=1 auto-picks the first level-up card after a
+    // short delay (exercises the full upgrade pipeline headlessly).
+    if (sSession.state == SessionState::LEVEL_UP) {
+        static bool sAutolevel = getenv("OAV_AUTOLEVEL") != nullptr;
+        static uint32_t sCardDelay = 0;
+        if (sAutolevel) {
+            if (++sCardDelay >= 100) {
+                sCardDelay = 0;
+                SPDLOG_INFO("[OAV] autolevel: applying card 0 (level {})", sSession.level);
+                ApplyUpgradeChoice(0);
+            }
+        }
+        return;
+    }
+
+    // Test hook continuation: with OAV_AUTOLEVEL the player is made
+    // invulnerable and starts with the spin attack so the whole upgrade
+    // pipeline (kills -> gems -> XP -> cards -> weapons) runs headlessly.
+    static bool sTestGodmode = getenv("OAV_AUTOLEVEL") != nullptr;
+    if (sTestGodmode && sSession.arenaEntered && sSession.frames == 1) {
+        SPDLOG_INFO("[OAV] autolevel: test godmode + starting spin attack");
+        gSaveContext.healthCapacity = 20 * 16;
+        gSaveContext.health = 20 * 16;
+        sSession.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] = 1;
+        GrantWeapon(Upgrade::SPIN);
+    }
+    if (sTestGodmode) {
+        gSaveContext.health = gSaveContext.healthCapacity;
+        // Drip-feed XP so the level-up/card pipeline is exercised.
+        if ((sSession.frames % 200) == 0 && sSession.state == SessionState::RUNNING) {
+            sSession.xp += 300;
+            SPDLOG_INFO("[OAV] autolevel: injected xp (total {})", sSession.xp);
+        }
+    }
+
     if (sSession.state != SessionState::RUNNING) {
         return;
     }
     if (gPlayState != nullptr && gPlayState->sceneNum == GetArenaInfo(sSession.arena)->sceneNum) {
         // We are inside the arena.
+        if (!sSession.arenaEntered) {
+            SPDLOG_INFO("[OAV] arena entered (scene {})", gPlayState->sceneNum);
+        }
         sSession.arenaEntered = true;
     } else if (sSession.arenaEntered) {
         // We left the arena without ending the run (e.g. via a grotto or a

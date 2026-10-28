@@ -52,6 +52,29 @@ static std::vector<std::string> CollectRoms(const std::vector<std::string>& args
     return roms;
 }
 
+// Reads a rom file into memory. Only big-endian (.z64 order) roms are
+// supported by SohTorch::Extract, same as the in-game extractor.
+static std::vector<uint8_t> ReadRom(const std::string& path) {
+    FILE* f = fopen(path.c_str(), "rb");
+    if (f == nullptr) {
+        return {};
+    }
+    fseek(f, 0, SEEK_END);
+    const long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (size <= 0) {
+        fclose(f);
+        return {};
+    }
+    std::vector<uint8_t> bytes(size);
+    const size_t read = fread(bytes.data(), 1, size, f);
+    fclose(f);
+    if (read != static_cast<size_t>(size)) {
+        return {};
+    }
+    return bytes;
+}
+
 int main(int argc, char** argv) {
     std::string src, dest, version;
     std::vector<std::string> romArgs;
@@ -96,14 +119,19 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    for (const auto& rom : roms) {
+    for (const auto& romPath : roms) {
         // A fresh extraction per ROM; torch names the archive from config.yml.
-        const std::string archive = SohTorch::Extract(rom, src, dest, version, nullptr);
-        if (archive.empty()) {
-            fprintf(stderr, "failed to extract %s\n", rom.c_str());
+        const std::vector<uint8_t> rom = ReadRom(romPath);
+        if (rom.empty()) {
+            fprintf(stderr, "could not read %s\n", romPath.c_str());
             return 1;
         }
-        printf("%s -> %s/%s\n", rom.c_str(), dest.c_str(), archive.c_str());
+        const std::string archive = SohTorch::Extract(rom, src, dest, version, nullptr);
+        if (archive.empty()) {
+            fprintf(stderr, "failed to extract %s\n", romPath.c_str());
+            return 1;
+        }
+        printf("%s -> %s/%s\n", romPath.c_str(), dest.c_str(), archive.c_str());
     }
 
     return 0;

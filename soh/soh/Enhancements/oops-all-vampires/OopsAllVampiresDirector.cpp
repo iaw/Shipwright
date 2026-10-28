@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <spdlog/spdlog.h>
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
@@ -122,6 +123,10 @@ const EnemyDef* PickEnemy(bool elite) {
     return candidates.back();
 }
 
+// Set while the director itself spawns an actor, so the native-spawn
+// suppression hook does not block our own spawns.
+bool sDirectorSpawning = false;
+
 void SpawnEnemy(const EnemyDef* def) {
     Player* player = GET_PLAYER(gPlayState);
     if (player == nullptr || def == nullptr) {
@@ -136,8 +141,10 @@ void SpawnEnemy(const EnemyDef* def) {
     pos.y = player->actor.world.pos.y + 60.0f;
     pos.z = player->actor.world.pos.z + sinf(angle) * radius;
 
+    sDirectorSpawning = true;
     Actor_Spawn(&gPlayState->actorCtx, gPlayState, def->actorId, pos.x, pos.y, pos.z, 0, 0, 0,
                 def->params);
+    sDirectorSpawning = false;
 }
 
 void SpawnGem(Actor* fromActor, s16 gemType) {
@@ -152,6 +159,18 @@ void SpawnGem(Actor* fromActor, s16 gemType) {
 
 void UpdateDirector() {
     Session& session = GetSession();
+
+    // Telemetry (rate-limited): state of the world for headless testing.
+    if ((session.frames % 100) == 0) {
+        Player* dbgPlayer = GET_PLAYER(gPlayState);
+        int32_t dbgEnemies = 0;
+        for (Actor* a = gPlayState->actorCtx.actorLists[ACTORCAT_ENEMY].head; a != nullptr; a = a->next) {
+            dbgEnemies++;
+        }
+        SPDLOG_INFO("[OAV] t={}s wave={} enemies={} health={} xp={} player={}",
+                    session.frames / 20, session.wave, dbgEnemies, gSaveContext.health, session.xp,
+                    dbgPlayer != nullptr ? "ok" : "null");
+    }
 
     // Wave tier for the HUD (matches the roster's phase boundaries).
     uint32_t seconds = session.frames / FRAMES_PER_SECOND;
@@ -278,6 +297,7 @@ uint32_t GemValue(s16 gemParams) {
 void CheckLevelUp() {
     Session& session = GetSession();
     if (session.state == SessionState::RUNNING && session.xp >= session.xpToNext) {
+        SPDLOG_INFO("[OAV] level up! level {} (xp {}/{})", session.level, session.xp, session.xpToNext);
         GenerateLevelUpChoices();
         session.state = SessionState::LEVEL_UP;
     }
@@ -337,6 +357,8 @@ void OnPlayerHealthChangeHandler(int16_t amount) {
     // The hook fires after gSaveContext.health has been updated.
     if (gSaveContext.health <= 0) {
         // Death: freeze the world and show the results screen.
+        SPDLOG_INFO("[OAV] game over: survived {} frames, {} kills, level {}", session.frames,
+                    session.kills, session.level);
         session.state = SessionState::GAME_OVER;
     }
 }
@@ -353,6 +375,9 @@ void ShouldActorUpdateHandler(void* refActor, bool* result) {
 void ShouldActorInitHandler(void* refActor, bool* result) {
     if (GetSession().state == SessionState::INACTIVE || gPlayState == nullptr) {
         return;
+    }
+    if (sDirectorSpawning) {
+        return; // the director's own spawn; allow it
     }
     Actor* actor = (Actor*)refActor;
     if (actor->category == ACTORCAT_ENEMY) {
@@ -513,6 +538,7 @@ void UpdateSessionFrame() {
     if (gPlayState == nullptr) {
         return;
     }
+    CheckLevelUp(); // catch level-ups from any XP source
     UpdateDirector();
     DespawnDistantEnemies();
     UpdateGems();

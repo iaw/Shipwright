@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <spdlog/spdlog.h>
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
@@ -52,6 +53,11 @@ int32_t WeaponLevel(Upgrade id) {
 }
 
 void PressButton(uint32_t button) {
+    static bool sLogged = false;
+    if (!sLogged) {
+        sLogged = true;
+        SPDLOG_INFO("[OAV] weapon scheduler issued its first button press (0x{:x})", button);
+    }
     GameInteractor::RawAction::EmulateButtonPress((int32_t)button);
 }
 
