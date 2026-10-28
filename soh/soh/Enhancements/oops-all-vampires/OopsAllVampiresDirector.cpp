@@ -322,6 +322,38 @@ void AwardXp(uint32_t amount) {
     CheckLevelUp();
 }
 
+// ---------------------------------------------------------------------------
+// Great Fairy evolutions (weapon + paired passive both maxed, then an elite kill)
+// ---------------------------------------------------------------------------
+
+void PerformEvolution(Upgrade weapon) {
+    Session& session = GetSession();
+    session.weaponEvolved[static_cast<int32_t>(weapon)] = true;
+    session.evolveReady = Upgrade::NONE;
+    session.evolutionTimer = 150;
+    session.evolutionTitle = (weapon == Upgrade::SPIN) ? "Great Spin Storm" : "Light Arrow Barrage";
+    SPDLOG_INFO("[OAV] Great Fairy's Blessing: {} evolved", session.evolutionTitle);
+    Audio_PlaySfxGeneral(NA_SE_EV_GREAT_FAIRY_APPEAR, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                         &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+}
+
+void CheckEvolutionReady() {
+    Session& session = GetSession();
+    if (session.evolveReady != Upgrade::NONE) {
+        return;
+    }
+    auto lvl = [&session](Upgrade u) { return session.upgradeLevels[static_cast<int32_t>(u)]; };
+    bool spinEvolved = session.weaponEvolved[static_cast<int32_t>(Upgrade::SPIN)];
+    bool bowEvolved = session.weaponEvolved[static_cast<int32_t>(Upgrade::BOW)];
+    if (!spinEvolved && lvl(Upgrade::SPIN) >= 3 && lvl(Upgrade::SWORD) >= 3) {
+        session.evolveReady = Upgrade::SPIN;
+        SPDLOG_INFO("[OAV] spin fully maxed; the next elite kill grants the Great Spin Storm");
+    } else if (!bowEvolved && lvl(Upgrade::BOW) >= 3 && lvl(Upgrade::MAGIC) >= 2) {
+        session.evolveReady = Upgrade::BOW;
+        SPDLOG_INFO("[OAV] bow fully maxed; the next elite kill grants the Light Arrow Barrage");
+    }
+}
+
 // Hooks -----------------------------------------------------------------------
 
 void OnEnemyDefeatHandler(void* refActor) {
@@ -329,13 +361,16 @@ void OnEnemyDefeatHandler(void* refActor) {
         return;
     }
     Actor* actor = (Actor*)refActor;
-    GetSession().kills++;
+    Session& session = GetSession();
+    session.kills++;
 
     // Gem value by enemy type: elites drop the big gem, others by tier.
     s16 gem = ITEM00_RUPEE_GREEN;
+    bool eliteKill = false;
     for (const auto& def : sRoster) {
         if (def.actorId == actor->id && def.params == actor->params) {
             gem = def.gemType;
+            eliteKill = def.elite;
             break;
         }
     }
@@ -344,6 +379,11 @@ void OnEnemyDefeatHandler(void* refActor) {
     // Occasional sustain heart.
     if (Rand_ZeroOne() < 0.04f) {
         SpawnGem(actor, ITEM00_HEART);
+    }
+
+    // The Great Fairy blesses a fully-maxed weapon when its paired elite falls.
+    if (eliteKill && session.evolveReady != Upgrade::NONE) {
+        PerformEvolution(session.evolveReady);
     }
 }
 
@@ -409,6 +449,21 @@ void RegisterDirectorHooks() {
     REGISTER_VB_SHOULD(VB_SHOW_GAMEPLAY_TIMER, {
         if (IsSessionActive()) {
             *should = true;
+        }
+    });
+
+    // Never persist a mode save (the run uses scratch save slot 0xFE).
+    REGISTER_VB_SHOULD(VB_BE_ABLE_TO_SAVE, {
+        if (IsSessionActive()) {
+            *should = false;
+        }
+    });
+
+    // The kaleido pause menu is disabled during a run; the mode HUD and the
+    // ImGui menubar (ESC) remain available.
+    REGISTER_VB_SHOULD(VB_OPEN_PAUSE_MENU, {
+        if (IsSessionActive()) {
+            *should = false;
         }
     });
 }
@@ -559,6 +614,31 @@ void UpdateSessionFrame() {
         return;
     }
     CheckLevelUp(); // catch level-ups from any XP source
+    CheckEvolutionReady();
+
+    // Test hook: OAV_AUTOEVOLVE=1 maxes both evolution pairs shortly after
+    // the run starts and blesses the weapons directly (headless verification).
+    static bool sAutoEvolve = getenv("OAV_AUTOEVOLVE") != nullptr;
+    if (sAutoEvolve) {
+        Session& session = GetSession();
+        if (session.frames == 600) {
+            session.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] = 3;
+            session.upgradeLevels[static_cast<int32_t>(Upgrade::SWORD)] = 3;
+            session.upgradeLevels[static_cast<int32_t>(Upgrade::BOW)] = 3;
+            session.upgradeLevels[static_cast<int32_t>(Upgrade::MAGIC)] = 2;
+            GrantWeapon(Upgrade::BOW);
+            gSaveContext.isMagicAcquired = 1;
+            gSaveContext.magicLevel = 1;
+            gSaveContext.magic = 48;
+            if (session.evolveReady != Upgrade::NONE) {
+                PerformEvolution(session.evolveReady);
+            }
+        } else if (session.frames == 700 || session.frames == 800) {
+            if (session.evolveReady != Upgrade::NONE) {
+                PerformEvolution(session.evolveReady);
+            }
+        }
+    }
     UpdateDirector();
     DespawnDistantEnemies();
     UpdateGems();

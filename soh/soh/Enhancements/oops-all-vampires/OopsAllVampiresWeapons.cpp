@@ -118,23 +118,35 @@ bool TryFire(Upgrade id) {
     }
 
     switch (id) {
-        case Upgrade::SPIN:
-            // Hold B to charge, then the release triggers the spin.
+        case Upgrade::SPIN: {
+            // Hold B to charge, then the release triggers the spin. Evolved
+            // (Great Spin Storm): hold longer for the full magic spin.
             if (session.spinHold > 0) {
                 return false; // already charging (handled below)
             }
+            bool evolved = session.weaponEvolved[static_cast<int32_t>(Upgrade::SPIN)];
+            uint32_t charge = evolved ? 50 : SPIN_CHARGE_FRAMES;
             session.weaponActive = static_cast<int32_t>(Upgrade::SPIN);
-            session.spinHold = SPIN_CHARGE_FRAMES;
-            session.weaponBusy = SPIN_CHARGE_FRAMES + PRESS_FRAMES;
+            session.spinHold = charge;
+            session.weaponBusy = charge + PRESS_FRAMES;
             return true;
+        }
 
-        case Upgrade::BOW:
+        case Upgrade::BOW: {
             if (gSaveContext.inventory.ammo[SLOT_BOW] <= 0) {
                 return false;
+            }
+            if (session.weaponEvolved[static_cast<int32_t>(Upgrade::BOW)]) {
+                // Light Arrow Barrage: a burst of light arrows.
+                FireCItem(ITEM_ARROW_LIGHT, SLOT_ARROW_LIGHT);
+                session.burstShots = 2;
+                session.weaponBusy = PRESS_FRAMES;
+                return true;
             }
             FireCItem(ITEM_BOW, SLOT_BOW);
             session.weaponBusy = PRESS_FRAMES;
             return true;
+        }
 
         case Upgrade::DINS:
             // Din's Fire costs magic; let the game deduct it.
@@ -202,6 +214,15 @@ void UpdateWeapons() {
         }
         return;
     }
+
+    // Continue an evolved bow burst.
+    if (session.burstShots > 0) {
+        session.burstShots--;
+        FireCItem(ITEM_ARROW_LIGHT, SLOT_ARROW_LIGHT);
+        session.weaponBusy = 8; // draw + release spacing
+        return;
+    }
+
     session.spinHold = 0;
     session.weaponActive = 0;
 
@@ -221,7 +242,12 @@ void UpdateWeapons() {
         }
         if (TryFire(weapon.id)) {
             int32_t level = WeaponLevel(weapon.id);
-            sCooldowns[index] = weapon.cooldown[CLAMP(level, 1, 3) - 1];
+            int32_t cd = weapon.cooldown[CLAMP(level, 1, 3) - 1];
+            // Great Spin Storm recharges at double rate.
+            if (weapon.id == Upgrade::SPIN && GetSession().weaponEvolved[static_cast<int32_t>(Upgrade::SPIN)]) {
+                cd /= 2;
+            }
+            sCooldowns[index] = cd;
             fired = true;
             break; // one emulated press at a time
         }

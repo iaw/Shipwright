@@ -432,6 +432,14 @@ typedef enum {
     // CHECK_BTN_ALL(input->press.button, BTN_START)
     // ```
     // #### `args`
+    // - `*PauseContext`
+    VB_OPEN_PAUSE_MENU,
+
+    // #### `result`
+    // ```c
+    // CHECK_BTN_ALL(input->press.button, BTN_START)
+    // ```
+    // #### `args`
     // - None
     VB_CLOSE_PAUSE_MENU,
 

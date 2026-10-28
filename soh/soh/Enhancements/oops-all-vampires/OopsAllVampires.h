@@ -85,6 +85,14 @@ struct Session {
     int32_t weaponActive = 0;      // Upgrade id currently holding a button
     uint32_t spinHold = 0;          // frames remaining of the B charge hold
     uint32_t magicTick = 0;         // slow magic regen counter
+    uint32_t burstShots = 0;        // remaining burst presses (evolved bow)
+
+    // Great Fairy evolutions (maxed weapon + maxed paired passive, then an
+    // elite kill blesses the weapon)
+    bool weaponEvolved[static_cast<int32_t>(Upgrade::COUNT_)] = { false };
+    Upgrade evolveReady = Upgrade::NONE; // weapon waiting for its elite kill
+    uint32_t evolutionTimer = 0;         // blessing banner countdown
+    const char* evolutionTitle = nullptr;
 
     void Reset() {
         state = SessionState::INACTIVE;
@@ -105,6 +113,13 @@ struct Session {
         weaponActive = 0;
         spinHold = 0;
         magicTick = 0;
+        burstShots = 0;
+        for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
+            weaponEvolved[i] = false;
+        }
+        evolveReady = Upgrade::NONE;
+        evolutionTimer = 0;
+        evolutionTitle = nullptr;
     }
 };
 

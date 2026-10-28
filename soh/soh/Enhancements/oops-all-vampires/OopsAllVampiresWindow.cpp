@@ -154,12 +154,41 @@ void DrawGameOver(Session& session) {
 
 } // namespace
 
+void DrawEvolutionBanner(Session& session) {
+    if (session.evolutionTimer <= 0 || session.evolutionTitle == nullptr) {
+        return;
+    }
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+
+    ImGui::SetNextWindowPos(ImVec2(displaySize.x * 0.5f, displaySize.y * 0.3f), ImGuiCond_Always,
+                            ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(0, 0));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.05f, 0.2f, 0.85f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+
+    if (ImGui::Begin("OAV Evolution", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoFocusOnAppearing |
+                         ImGuiWindowFlags_NoNav)) {
+        ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.8f, 1.0f), "Great Fairy's Blessing!");
+        ImGui::Separator();
+        ImGui::Text("%s evolved", session.evolutionTitle);
+    }
+    ImGui::End();
+
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+}
+
 void OavHudWindow::Draw() {
     if (!IsSessionActive()) {
         return;
     }
 
     Session& session = GetSession();
+    DrawEvolutionBanner(session);
     switch (session.state) {
         case SessionState::RUNNING:
             DrawHud(session);

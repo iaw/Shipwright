@@ -154,6 +154,9 @@ void OnFrameUpdate() {
         return;
     }
     sSession.frames++;
+    if (sSession.evolutionTimer > 0) {
+        sSession.evolutionTimer--;
+    }
     UpdateSessionFrame();
 }
 
