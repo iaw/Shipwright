@@ -241,7 +241,13 @@ void UpdateDirector() {
         if (session.eliteCooldown > 0) {
             session.eliteCooldown--;
         } else {
-            session.eliteCooldown = GetTuning().eliteIntervalSeconds * FRAMES_PER_SECOND;
+            // Finale ("wall of death"): the last minutes bring elites faster.
+            uint32_t interval = GetTuning().eliteIntervalSeconds;
+            uint32_t seconds = session.frames / FRAMES_PER_SECOND;
+            if (seconds >= GetTuning().finaleStartSeconds) {
+                interval = GetTuning().finaleEliteIntervalSeconds;
+            }
+            session.eliteCooldown = interval * FRAMES_PER_SECOND;
             for (uint32_t i = 0; i < (hard ? GetTuning().eliteHardCount : 1); i++) {
                 SpawnEnemy(PickEnemy(true));
             }
@@ -401,8 +407,8 @@ void OnEnemyDefeatHandler(void* refActor) {
     }
     SpawnGem(actor, gem);
 
-    // Occasional sustain heart.
-    if (Rand_ZeroOne() < 0.04f) {
+    // Occasional sustain heart; elites always drop one.
+    if (eliteKill || Rand_ZeroOne() < 0.04f) {
         SpawnGem(actor, ITEM00_HEART);
     }
 
@@ -434,6 +440,13 @@ void OnPlayerHealthChangeHandler(int16_t amount) {
     }
     // The hook fires after gSaveContext.health has been updated.
     if (gSaveContext.health <= 0) {
+        // Bottled fairy: auto-revive instead of dying.
+        if (session.fairiesRemaining > 0) {
+            session.fairiesRemaining--;
+            gSaveContext.health = gSaveContext.healthCapacity;
+            SPDLOG_INFO("[OAV] bottled fairy consumed ({} left)", session.fairiesRemaining);
+            return;
+        }
         // Death: freeze the world and show the results screen.
         SPDLOG_INFO("[OAV] game over: survived {} frames, {} kills, level {}", session.frames,
                     session.kills, session.level);
@@ -525,6 +538,10 @@ const UpgradeDef sUpgrades[] = {
     { Upgrade::NAYRUS, "Nayru's Love", "A damaging barrier shields Link whenever it is down.", 3 },
     { Upgrade::BOMBS, "Bombs", "Bombs drop automatically around Link. Mind the blast!", 3 },
     { Upgrade::HOOKSHOT, "Hookshot", "The hookshot lunges at nearby enemies. Longshot at max.",
+      3 },
+    { Upgrade::BOOTS, "Pegasus Boots", "Link runs faster. Stack for more speed.", 2 },
+    { Upgrade::TUNIC, "Fiber Tunic", "Damage taken is reduced. Stack for less.", 2 },
+    { Upgrade::FAIRY, "Bottled Fairy", "A fairy auto-revives Link when defeated. One use per level.",
       3 },
 };
 
@@ -646,6 +663,15 @@ void ApplyUpgradeChoice(int32_t choiceIndex) {
         case Upgrade::HOOKSHOT:
             session.upgradeLevels[static_cast<int32_t>(choice.id)]++;
             GrantWeapon(choice.id);
+            break;
+        case Upgrade::BOOTS:
+        case Upgrade::TUNIC:
+            session.upgradeLevels[static_cast<int32_t>(choice.id)]++;
+            ApplyPassiveEffects();
+            break;
+        case Upgrade::FAIRY:
+            session.upgradeLevels[static_cast<int32_t>(Upgrade::FAIRY)]++;
+            session.fairiesRemaining++;
             break;
         case Upgrade::RECOVERY: {
             s32 healed = gSaveContext.health + 16 * 4;

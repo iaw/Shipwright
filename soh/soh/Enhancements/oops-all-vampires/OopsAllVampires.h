@@ -46,6 +46,9 @@ enum class Upgrade : int32_t {
     NAYRUS,          // auto Nayru's Love (magic)
     BOMBS,           // auto-dropped bombs
     HOOKSHOT,        // auto hookshot (longshot at max)
+    BOOTS,           // passive: movement speed multiplier
+    TUNIC,           // passive: defense modifier (less damage taken)
+    FAIRY,           // passive: bottled fairy auto-revives
     RECOVERY,        // emergency heal (fallback card)
     COUNT_
 };
@@ -90,6 +93,9 @@ struct Session {
     uint32_t magicTick = 0;         // slow magic regen counter
     uint32_t burstShots = 0;        // remaining burst presses (evolved bow)
 
+    // Passives with run-scoped side effects
+    uint8_t fairiesRemaining = 0; // bottled-fairy auto-revives left
+
     // Great Fairy evolutions (maxed weapon + maxed paired passive, then an
     // elite kill blesses the weapon)
     bool weaponEvolved[static_cast<int32_t>(Upgrade::COUNT_)] = { false };
@@ -118,6 +124,7 @@ struct Session {
         spinHold = 0;
         magicTick = 0;
         burstShots = 0;
+        fairiesRemaining = 0;
         for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
             weaponEvolved[i] = false;
         }
@@ -157,6 +164,10 @@ void UpdateWeapons();
 
 // Grants the item(s) backing a weapon upgrade (called on level-up apply).
 void GrantWeapon(Upgrade weapon);
+
+// Passive side effects (speed/defense) owned by the weapon scheduler.
+void ApplyPassiveEffects();
+void RemovePassiveEffects();
 
 // Clears pending weapon presses/cooldowns (called on session reset).
 void ResetWeaponScheduler();

@@ -42,6 +42,8 @@ const char* TEMPLATE = R"JSON({
 
     "elite": { "startSeconds": 240, "intervalSeconds": 45, "hardCount": 2 },
 
+    "finale": { "startSeconds": 1500, "eliteIntervalSeconds": 15 },
+
     "wave": { "secondsPerTier": 300, "maxTier": 7 },
 
     "rosterPhaseSeconds": [0, 60, 120, 240, 360, 480, 720]
@@ -108,6 +110,13 @@ void ReadFile(const std::string& path) {
             ReadKey<uint32_t>(elite, "startSeconds", sTuning.eliteStartSeconds, 0, 24 * 60 * 60);
             ReadKey<uint32_t>(elite, "intervalSeconds", sTuning.eliteIntervalSeconds, 5, 3600);
             ReadKey<uint32_t>(elite, "hardCount", sTuning.eliteHardCount, 1, 10);
+        }
+
+        if (json.contains("finale")) {
+            const auto& finale = json.at("finale");
+            ReadKey<uint32_t>(finale, "startSeconds", sTuning.finaleStartSeconds, 0, 24 * 60 * 60);
+            ReadKey<uint32_t>(finale, "eliteIntervalSeconds", sTuning.finaleEliteIntervalSeconds, 5,
+                              3600);
         }
 
         if (json.contains("wave")) {

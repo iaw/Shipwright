@@ -3,7 +3,10 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <spdlog/spdlog.h>
 
+#include <memory>
+
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
+#include "soh/Enhancements/game-interactor/GameInteractionEffect.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
 
 extern "C" {
@@ -285,6 +288,48 @@ void GrantWeapon(Upgrade weapon) {
             break;
     }
     ResetCooldowns();
+}
+
+// ---------------------------------------------------------------------------
+// Passive side effects (speed / defense) via GameInteractionEffects
+// ---------------------------------------------------------------------------
+
+std::unique_ptr<GameInteractionEffect::ModifyMovementSpeedMultiplier> sSpeedEffect;
+std::unique_ptr<GameInteractionEffect::ModifyDefenseModifier> sDefenseEffect;
+
+void ApplyPassiveEffects() {
+    Session& session = GetSession();
+
+    if (sSpeedEffect == nullptr) {
+        sSpeedEffect = std::make_unique<GameInteractionEffect::ModifyMovementSpeedMultiplier>();
+    }
+    sSpeedEffect->Remove();
+    int32_t boots = session.upgradeLevels[static_cast<int32_t>(Upgrade::BOOTS)];
+    if (boots > 0) {
+        ((::ParameterizedGameInteractionEffect*)sSpeedEffect.get())->parameters[0] =
+            1 + boots; // L1: 2x, L2: 3x
+        sSpeedEffect->Apply();
+    }
+
+    if (sDefenseEffect == nullptr) {
+        sDefenseEffect = std::make_unique<GameInteractionEffect::ModifyDefenseModifier>();
+    }
+    sDefenseEffect->Remove();
+    int32_t tunic = session.upgradeLevels[static_cast<int32_t>(Upgrade::TUNIC)];
+    if (tunic > 0) {
+        ((::ParameterizedGameInteractionEffect*)sDefenseEffect.get())->parameters[0] =
+            1 + tunic; // L1: half damage, L2: a third
+        sDefenseEffect->Apply();
+    }
+}
+
+void RemovePassiveEffects() {
+    if (sSpeedEffect != nullptr) {
+        sSpeedEffect->Remove();
+    }
+    if (sDefenseEffect != nullptr) {
+        sDefenseEffect->Remove();
+    }
 }
 
 // Exposed for the session reset path.

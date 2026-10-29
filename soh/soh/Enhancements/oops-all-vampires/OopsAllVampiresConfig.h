@@ -36,6 +36,11 @@ struct OavTuning {
     uint32_t eliteIntervalSeconds = 45;
     uint32_t eliteHardCount = 2; // elites per wave on hard difficulty
 
+    // Finale ("wall of death"): from this second on, elites arrive on the
+    // shorter interval below for the run's climax.
+    uint32_t finaleStartSeconds = 1500;
+    uint32_t finaleEliteIntervalSeconds = 15;
+
     // Wave tier shown on the HUD.
     uint32_t waveSecondsPerTier = 300;
     uint32_t waveMaxTier = 7;

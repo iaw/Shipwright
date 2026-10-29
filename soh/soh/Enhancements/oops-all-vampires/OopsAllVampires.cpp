@@ -139,6 +139,12 @@ void OnFrameUpdate() {
         if (!sSession.arenaEntered) {
             SPDLOG_INFO("[OAV] arena entered (scene {})", gPlayState->sceneNum);
             Interface_ChangeHudVisibilityMode(HUD_VISIBILITY_ALL);
+            // The run starts with the spin attack (plan 3.5: basic weapon at
+            // level 1); everything else comes from level-up cards.
+            if (sSession.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] == 0) {
+                sSession.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] = 1;
+                GrantWeapon(Upgrade::SPIN);
+            }
         }
         sSession.arenaEntered = true;
         // Re-assert the HUD in case a cutscene flag hides it again.
@@ -231,6 +237,9 @@ void OAV_EndRun() {
     if (OAV::sSession.state == OAV::SessionState::INACTIVE) {
         return;
     }
+
+    // Drop run-scoped passive effects (speed/defense modifiers).
+    OAV::RemovePassiveEffects();
 
     // Record local bests before tearing the session down.
     uint32_t seconds = OAV::sSession.frames / 20;
