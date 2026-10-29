@@ -1830,6 +1830,18 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     }
 
     audio.cv_to_thread.notify_one();
+
+    // Fast-forward (headless logic soaks): LUS_SKIP_RENDER bypasses gfx
+    // submission entirely so the game loop is bound only by logic speed.
+    // Combine with LUS_TURBO=1 (no frame limiter) and LUS_VI_INTERVAL_MS=1.
+    if (getenv("LUS_SKIP_RENDER") != nullptr) {
+        {
+            std::unique_lock<std::mutex> Lock(audio.mutex);
+            audio.processing = false; // no synthesis: dummy audio driver anyway
+        }
+        return;
+    }
+
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
     static int last_fps;
     static int last_update_rate;

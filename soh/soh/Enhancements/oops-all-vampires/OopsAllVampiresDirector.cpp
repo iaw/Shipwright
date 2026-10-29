@@ -43,31 +43,31 @@ const EnemyDef sRoster[] = {
     { ACTOR_EN_CROW,     0,     0,     ITEM00_RUPEE_GREEN,  10, false }, // Guay
     // 2:00 - 5:00
     { ACTOR_EN_FIREFLY,  1,  2400,     ITEM00_RUPEE_GREEN,   8, false }, // Fire Keese
-    { ACTOR_EN_BB,      -1,  2400,     ITEM00_RUPEE_GREEN,   8, false }, // Bubble
-    { ACTOR_EN_TITE,    -1,  2400,     ITEM00_RUPEE_GREEN,   8, false }, // Red Tektite
-    { ACTOR_EN_GOMA,     7,  2400,     ITEM00_RUPEE_GREEN,   6, false }, // Gohma Larva
-    // 5:00 - 10:00
-    { ACTOR_EN_TITE,    -2,  6000,     ITEM00_RUPEE_BLUE,    8, false }, // Blue Tektite
-    { ACTOR_EN_PEEHAT,   1,  6000,     ITEM00_RUPEE_BLUE,    6, false }, // Peahat Larva
-    { ACTOR_EN_WF,       0,  6000,     ITEM00_RUPEE_BLUE,    8, false }, // Wolfos
-    { ACTOR_EN_DEKUBABA, 0,  6000,     ITEM00_RUPEE_BLUE,    8, false }, // Deku Baba (small)
-    // 10:00 - 15:00
-    { ACTOR_EN_TEST,     2, 12000,     ITEM00_RUPEE_RED,     8, false }, // Stalfos
-    { ACTOR_EN_RD,       1, 12000,     ITEM00_RUPEE_RED,     8, false }, // ReDead
-    { ACTOR_EN_RD,   32766, 12000,     ITEM00_RUPEE_RED,     6, false }, // Gibdo
-    { ACTOR_EN_SKB,     20, 12000,     ITEM00_RUPEE_RED,     6, false }, // Stalchild (big)
-    // 15:00 - 20:00
-    { ACTOR_EN_ZF,      -2, 18000,     ITEM00_RUPEE_RED,     8, false }, // Dinolfos
-    { ACTOR_EN_RR,       0, 18000,     ITEM00_RUPEE_RED,     6, false }, // Like-Like
-    { ACTOR_EN_ST,       1, 18000,     ITEM00_RUPEE_RED,     6, false }, // Big Skulltula
-    { ACTOR_EN_IK,       2, 18000,     ITEM00_RUPEE_PURPLE,  2, true  }, // Iron Knuckle (black)
-    // 20:00 - 25:00
-    { ACTOR_EN_IK,       3, 24000,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle (white)
-    { ACTOR_EN_FD,       0, 24000,     ITEM00_RUPEE_PURPLE,  2, true  }, // Flare Dancer
-    // 25:00+ — everything, heavier weights
-    { ACTOR_EN_TEST,     2, 30000,     ITEM00_RUPEE_RED,    10, false }, // Stalfos (endless)
-    { ACTOR_EN_ZF,      -2, 30000,     ITEM00_RUPEE_RED,    10, false }, // Dinolfos (endless)
-    { ACTOR_EN_IK,       2, 30000,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle storm
+    { ACTOR_EN_BB,      -1,  1200,     ITEM00_RUPEE_GREEN,   8, false }, // Bubble
+    { ACTOR_EN_TITE,    -1,  1200,     ITEM00_RUPEE_GREEN,   8, false }, // Red Tektite
+    { ACTOR_EN_GOMA,     7,  1200,     ITEM00_RUPEE_GREEN,   6, false }, // Gohma Larva
+    // 2:00 - 4:00
+    { ACTOR_EN_TITE,    -2,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Blue Tektite
+    { ACTOR_EN_PEEHAT,   1,  2400,     ITEM00_RUPEE_BLUE,    6, false }, // Peahat Larva
+    { ACTOR_EN_WF,       0,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Wolfos
+    { ACTOR_EN_DEKUBABA, 0,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Deku Baba (small)
+    // 4:00 - 6:00
+    { ACTOR_EN_TEST,     2,  4800,     ITEM00_RUPEE_RED,     8, false }, // Stalfos
+    { ACTOR_EN_RD,       1,  4800,     ITEM00_RUPEE_RED,     8, false }, // ReDead
+    { ACTOR_EN_RD,   32766,  4800,     ITEM00_RUPEE_RED,     6, false }, // Gibdo
+    { ACTOR_EN_SKB,     20,  4800,     ITEM00_RUPEE_RED,     6, false }, // Stalchild (big)
+    // 6:00 - 8:00
+    { ACTOR_EN_ZF,      -2,  7200,     ITEM00_RUPEE_RED,     8, false }, // Dinolfos
+    { ACTOR_EN_RR,       0,  7200,     ITEM00_RUPEE_RED,     6, false }, // Like-Like
+    { ACTOR_EN_ST,       1,  7200,     ITEM00_RUPEE_RED,     6, false }, // Big Skulltula
+    { ACTOR_EN_IK,       2,  7200,     ITEM00_RUPEE_PURPLE,  2, true  }, // Iron Knuckle (black)
+    // 8:00 - 12:00
+    { ACTOR_EN_IK,       3,  9600,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle (white)
+    { ACTOR_EN_FD,       0,  9600,     ITEM00_RUPEE_PURPLE,  2, true  }, // Flare Dancer
+    // 12:00+ — everything, heavier weights (final 18 minutes)
+    { ACTOR_EN_TEST,     2, 14400,     ITEM00_RUPEE_RED,    10, false }, // Stalfos (endless)
+    { ACTOR_EN_ZF,      -2, 14400,     ITEM00_RUPEE_RED,    10, false }, // Dinolfos (endless)
+    { ACTOR_EN_IK,       2, 14400,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle storm
 };
 // clang-format on
 
@@ -162,6 +162,15 @@ void SpawnGem(Actor* fromActor, s16 gemType) {
 void UpdateDirector() {
     Session& session = GetSession();
 
+    // Surviving the full 30 minutes is a victory; the results screen takes
+    // over from here (world freeze + stats, same as death).
+    if (session.frames >= RUN_LENGTH_SECONDS * FRAMES_PER_SECOND) {
+        session.victory = true;
+        session.state = SessionState::GAME_OVER;
+        SPDLOG_INFO("[OAV] survived the full run! ({} kills, level {})", session.kills, session.level);
+        return;
+    }
+
     // Telemetry (rate-limited): state of the world for headless testing.
     if ((session.frames % 100) == 0) {
         Player* dbgPlayer = GET_PLAYER(gPlayState);
@@ -174,24 +183,26 @@ void UpdateDirector() {
                     dbgPlayer != nullptr ? "ok" : "null");
     }
 
-    // Wave tier for the HUD (matches the roster's phase boundaries).
+    // Wave tier for the HUD (reaches 7 at ~30:00).
     uint32_t seconds = session.frames / FRAMES_PER_SECOND;
-    session.wave = seconds < 120 ? 1 : seconds < 300 ? 2 : seconds < 600 ? 3 : seconds < 900 ? 4
-                                 : seconds < 1200                    ? 5
-                                 : seconds < 1500                    ? 6
-                                                                     : 7;
+    session.wave = 1 + seconds / 300;
+    if (session.wave > 7) {
+        session.wave = 7;
+    }
 
     const bool hard = session.difficulty == Difficulty::HARD;
 
-    // Spawn cadence ramps up over the run.
-    uint32_t interval = 22 - session.frames / 2000; // 22 -> 10 frames
+    // Spawn cadence ramps up over the run. The phase schedule was compressed
+    // 2x for the 30-minute arc, so the ramp is stretched to compensate: the
+    // same per-minute intensity as the original pacing, floor at ~24 minutes.
+    uint32_t interval = 22 - session.frames / 2400; // 22 -> 10 frames
     if (interval < 10) {
         interval = 10;
     }
     if (hard) {
         interval = interval * 7 / 10;
     }
-    uint32_t batch = 2 + session.frames / 6000; // 2 -> 5+
+    uint32_t batch = 2 + session.frames / 7000; // 2 -> 6 near the end
     if (batch > 6) {
         batch = 6;
     }
@@ -212,8 +223,8 @@ void UpdateDirector() {
         }
     }
 
-    // Elites: one every ~45 seconds from 15:00 onward.
-    if (session.frames >= 18000) {
+    // Elites: one every ~45 seconds from 4:00 onward (evolution carriers).
+    if (session.frames >= 240 * FRAMES_PER_SECOND) {
         if (session.eliteCooldown > 0) {
             session.eliteCooldown--;
         } else {
@@ -221,6 +232,7 @@ void UpdateDirector() {
             for (int32_t i = 0; i < (hard ? 2 : 1); i++) {
                 SpawnEnemy(PickEnemy(true));
             }
+            SPDLOG_INFO("[OAV] elite spawned (t={}s)", session.frames / FRAMES_PER_SECOND);
         }
     }
 }

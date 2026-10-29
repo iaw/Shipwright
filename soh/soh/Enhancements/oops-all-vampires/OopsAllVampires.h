@@ -69,6 +69,7 @@ struct Session {
     uint32_t frames = 0;     // elapsed gameplay frames (20 fps)
     uint32_t wave = 0;       // current wave tier (director)
     bool arenaEntered = false; // set once the arena scene is observed
+    bool victory = false;      // survived the full 30 minutes
 
     // Upgrades
     int32_t upgradeLevels[static_cast<int32_t>(Upgrade::COUNT_)] = { 0 };
@@ -103,6 +104,7 @@ struct Session {
         frames = 0;
         wave = 0;
         arenaEntered = false;
+        victory = false;
         for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
             upgradeLevels[i] = 0;
         }

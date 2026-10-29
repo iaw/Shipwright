@@ -121,7 +121,11 @@ void DrawGameOver(Session& session) {
         uint32_t minutes = totalSeconds / 60;
         uint32_t seconds = totalSeconds % 60;
 
-        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "You were overrun!");
+        if (session.victory) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.5f, 1.0f), "You survived the night!");
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "You were overrun!");
+        }
         ImGui::Separator();
         ImGui::Text("Survived:  %u:%02u", minutes, seconds);
         ImGui::Text("Level:     %u", session.level);
