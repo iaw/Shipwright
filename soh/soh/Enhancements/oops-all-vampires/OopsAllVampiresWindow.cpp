@@ -27,7 +27,7 @@ constexpr float ELITE_EDGE_PADDING = 40.0f;
 
 // Draws edge arrows pointing at every live elite so nothing important ever
 // lives silently off-screen. Elites are the mode's evolution carriers.
-void DrawEliteIndicators(Session& session) {
+void DrawEliteIndicators() {
     if (gPlayState == nullptr) {
         return;
     }
@@ -154,7 +154,7 @@ void DrawHud(Session& session) {
     ImGui::End();
 
     DrawInventory(session);
-    DrawEliteIndicators(session);
+    DrawEliteIndicators();
 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();

@@ -112,15 +112,14 @@ void OnFrameUpdate() {
     }
 
     // Test hook continuation: with OAV_AUTOLEVEL the player is made
-    // invulnerable and starts with the spin attack so the whole upgrade
-    // pipeline (kills -> gems -> XP -> cards -> weapons) runs headlessly.
+    // invulnerable so the whole upgrade pipeline (kills -> gems -> XP ->
+    // cards -> weapons) runs headlessly. The starting spin attack is granted
+    // for real at arena entry (see OnFrameUpdate).
     static bool sTestGodmode = getenv("OAV_AUTOLEVEL") != nullptr;
     if (sTestGodmode && sSession.arenaEntered && sSession.frames == 1) {
-        SPDLOG_INFO("[OAV] autolevel: test godmode + starting spin attack");
+        SPDLOG_INFO("[OAV] autolevel: test godmode");
         gSaveContext.healthCapacity = 20 * 16;
         gSaveContext.health = 20 * 16;
-        sSession.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] = 1;
-        GrantWeapon(Upgrade::SPIN);
     }
     if (sTestGodmode) {
         gSaveContext.health = gSaveContext.healthCapacity;
