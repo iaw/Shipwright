@@ -1,0 +1,51 @@
+name: Build Windows (OAV mod)
+
+# Trimmed from generate-builds.yml: Windows-only, no OTR generation step,
+# no ROM-derived content in the package. The recipient extracts their own
+# legally dumped ROM on first launch via the built-in extractor.
+on:
+  push:
+    branches: [mod/oops-all-vampires]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Install dependencies
+      run: |
+        choco install ninja -y
+        Remove-Item -Path "C:\ProgramData\Chocolatey\bin\ccache.exe" -Force -ErrorAction SilentlyContinue
+    - name: Git Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: Restore vcpkg cache
+      uses: actions/cache@v5
+      with:
+        path: vcpkg
+        key: oav-vcpkg-${{ github.sha }}
+        restore-keys: |
+          oav-vcpkg-
+    - name: Configure Developer Command Prompt
+      uses: TheMrMilchmann/setup-msvc-dev@v4
+      with:
+        arch: x64
+    - name: Build SoH
+      env:
+        VCPKG_ROOT: ${{github.workspace}}/vcpkg
+      run: |
+        cmake -S . -B build-windows -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_BUILD_TYPE:STRING=Release
+        cmake --build build-windows --config Release --parallel 4
+    - name: Package (zip, ROM-free)
+      run: |
+        Compress-Archive -Path build-windows/soh/* -DestinationPath oav-windows.zip
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: oav-windows
+        path: oav-windows.zip
