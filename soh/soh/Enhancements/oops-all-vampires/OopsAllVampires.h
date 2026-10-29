@@ -91,7 +91,8 @@ struct Session {
     int32_t weaponActive = 0;      // Upgrade id currently holding a button
     uint32_t spinHold = 0;          // frames remaining of the B charge hold
     uint32_t magicTick = 0;         // slow magic regen counter
-    uint32_t burstShots = 0;        // remaining burst presses (evolved bow)
+    uint32_t burstShots = 0;        // remaining burst presses (evolved bow/hookshot)
+    Upgrade burstWeapon = Upgrade::NONE; // weapon whose burst is in flight
 
     // Passives with run-scoped side effects
     uint8_t fairiesRemaining = 0; // bottled-fairy auto-revives left
@@ -124,6 +125,7 @@ struct Session {
         spinHold = 0;
         magicTick = 0;
         burstShots = 0;
+        burstWeapon = Upgrade::NONE;
         fairiesRemaining = 0;
         for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
             weaponEvolved[i] = false;

@@ -1,5 +1,12 @@
+#include <filesystem>
 #include <fstream>
 #include <sstream>
+
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
@@ -20,6 +27,39 @@ constexpr const char* CONFIG_FILE = "oops-all-vampires.json";
 
 OavTuning sTuning;
 bool sLoaded = false;
+
+// The tuning file always lives next to the game executable (the zip root on
+// Windows), regardless of the working directory the game was launched from.
+// The stock app-directory helper resolves against the cwd on portable
+// builds, which can differ from the exe's folder.
+std::string TuningFilePath() {
+    // Test isolation: headless soak instances can point at their own file.
+    if (const char* override = getenv("OAV_TUNING_PATH")) {
+        return std::string(override);
+    }
+#if defined(_WIN32)
+    wchar_t wbuf[4096];
+    DWORD len = GetModuleFileNameW(nullptr, wbuf, 4096);
+    if (len > 0 && len < 4096) {
+        std::error_code ec;
+        std::filesystem::path dir = std::filesystem::path(std::wstring(wbuf, len)).parent_path();
+        std::string out = (dir / CONFIG_FILE).string();
+        if (!ec) {
+            return out;
+        }
+    }
+#elif defined(__linux__)
+    char buf[4096];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0) {
+        buf[len] = '\0';
+        std::filesystem::path dir = std::filesystem::path(buf).parent_path();
+        return (dir / CONFIG_FILE).string();
+    }
+#endif
+    // Fallback: app directory (cwd on portable builds).
+    return Ship::Context::GetPathRelativeToAppDirectory(CONFIG_FILE);
+}
 
 // Default template written to the game folder on first launch so the file can
 // be discovered and edited without reading the source.
@@ -159,7 +199,7 @@ void ReadFile(const std::string& path) {
 
 void ReloadTuning() {
     sTuning = OavTuning{}; // reset to defaults, then merge the file over them
-    std::string path = Ship::Context::GetPathRelativeToAppDirectory(CONFIG_FILE);
+    std::string path = TuningFilePath();
     ReadFile(path);
     sLoaded = true;
 }

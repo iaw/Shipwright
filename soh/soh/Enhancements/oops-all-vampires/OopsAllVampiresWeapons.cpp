@@ -86,6 +86,17 @@ void UpdateSustain() {
         gSaveContext.inventory.ammo[SLOT_BOMB] = 15;
     }
 
+    // Ether Shield (evolved Nayru's Love): the barrier mends wounds.
+    if (WeaponLevel(Upgrade::NAYRUS) > 0 &&
+        session.weaponEvolved[static_cast<int32_t>(Upgrade::NAYRUS)] &&
+        gSaveContext.nayrusLoveTimer > 0 && (session.frames % 40) == 0 &&
+        gSaveContext.health < gSaveContext.healthCapacity) {
+        gSaveContext.health += 16; // half a heart per 2 seconds while held
+        if (gSaveContext.health > gSaveContext.healthCapacity) {
+            gSaveContext.health = gSaveContext.healthCapacity;
+        }
+    }
+
     // Slow magic regeneration while magic weapons are owned.
     bool needsMagic = WeaponLevel(Upgrade::DINS) > 0 || WeaponLevel(Upgrade::NAYRUS) > 0;
     if (needsMagic && gSaveContext.magicLevel > 0) {
@@ -143,6 +154,7 @@ bool TryFire(Upgrade id) {
                 // Light Arrow Barrage: a burst of light arrows.
                 FireCItem(ITEM_ARROW_LIGHT, SLOT_ARROW_LIGHT);
                 session.burstShots = 2;
+                session.burstWeapon = Upgrade::BOW;
                 session.weaponBusy = PRESS_FRAMES;
                 return true;
             }
@@ -152,9 +164,13 @@ bool TryFire(Upgrade id) {
         }
 
         case Upgrade::DINS:
-            // Din's Fire costs magic; let the game deduct it.
+            // Din's Fire costs magic; let the game deduct it. Evolved
+            // (Cataclysm): the cast is free.
             if (gSaveContext.magic < 12) {
-                return false;
+                if (!session.weaponEvolved[static_cast<int32_t>(Upgrade::DINS)]) {
+                    return false;
+                }
+                gSaveContext.magic = 12;
             }
             FireCItem(ITEM_DINS_FIRE, SLOT_DINS_FIRE);
             session.weaponBusy = PRESS_FRAMES;
@@ -177,11 +193,17 @@ bool TryFire(Upgrade id) {
             session.weaponBusy = PRESS_FRAMES;
             return true;
 
-        case Upgrade::HOOKSHOT:
+        case Upgrade::HOOKSHOT: {
             FireCItem(WeaponLevel(Upgrade::HOOKSHOT) >= 3 ? ITEM_LONGSHOT : ITEM_HOOKSHOT,
                       SLOT_HOOKSHOT);
+            if (session.weaponEvolved[static_cast<int32_t>(Upgrade::HOOKSHOT)]) {
+                // Chain Barrage: a second lash follows the first.
+                session.burstShots = 1;
+                session.burstWeapon = Upgrade::HOOKSHOT;
+            }
             session.weaponBusy = PRESS_FRAMES;
             return true;
+        }
 
         default:
             return false;
@@ -218,10 +240,14 @@ void UpdateWeapons() {
         return;
     }
 
-    // Continue an evolved bow burst.
+    // Continue an evolved weapon burst (bow light arrows / hookshot chain).
     if (session.burstShots > 0) {
         session.burstShots--;
-        FireCItem(ITEM_ARROW_LIGHT, SLOT_ARROW_LIGHT);
+        if (session.burstWeapon == Upgrade::HOOKSHOT) {
+            FireCItem(ITEM_LONGSHOT, SLOT_HOOKSHOT);
+        } else {
+            FireCItem(ITEM_ARROW_LIGHT, SLOT_ARROW_LIGHT);
+        }
         session.weaponBusy = 8; // draw + release spacing
         return;
     }

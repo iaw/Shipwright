@@ -357,13 +357,35 @@ void AwardXp(uint32_t amount) {
 // Great Fairy evolutions (weapon + paired passive both maxed, then an elite kill)
 // ---------------------------------------------------------------------------
 
+struct EvolutionDef {
+    Upgrade weapon;
+    Upgrade passive;
+    const char* title;
+};
+
+const EvolutionDef sEvolutions[] = {
+    { Upgrade::SPIN,     Upgrade::SWORD,  "Great Spin Storm" },
+    { Upgrade::BOW,      Upgrade::MAGIC,  "Light Arrow Barrage" },
+    { Upgrade::DINS,     Upgrade::TUNIC,  "Cataclysm" },
+    { Upgrade::BOMBS,    Upgrade::BOOTS,  "Bomb Sprint" },
+    { Upgrade::HOOKSHOT, Upgrade::MAGNET, "Chain Barrage" },
+    { Upgrade::NAYRUS,   Upgrade::FAIRY,  "Ether Shield" },
+};
+
 void PerformEvolution(Upgrade weapon) {
     Session& session = GetSession();
     session.weaponEvolved[static_cast<int32_t>(weapon)] = true;
     session.evolveReady = Upgrade::NONE;
     session.evolutionTimer = 150;
-    session.evolutionTitle = (weapon == Upgrade::SPIN) ? "Great Spin Storm" : "Light Arrow Barrage";
-    SPDLOG_INFO("[OAV] Great Fairy's Blessing: {} evolved", session.evolutionTitle);
+    session.evolutionTitle = nullptr;
+    for (const auto& def : sEvolutions) {
+        if (def.weapon == weapon) {
+            session.evolutionTitle = def.title;
+            break;
+        }
+    }
+    SPDLOG_INFO("[OAV] Great Fairy's Blessing: {} evolved",
+                session.evolutionTitle != nullptr ? session.evolutionTitle : "?");
     Audio_PlaySfxGeneral(NA_SE_EV_GREAT_FAIRY_APPEAR, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
                          &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
 }
@@ -374,14 +396,16 @@ void CheckEvolutionReady() {
         return;
     }
     auto lvl = [&session](Upgrade u) { return session.upgradeLevels[static_cast<int32_t>(u)]; };
-    bool spinEvolved = session.weaponEvolved[static_cast<int32_t>(Upgrade::SPIN)];
-    bool bowEvolved = session.weaponEvolved[static_cast<int32_t>(Upgrade::BOW)];
-    if (!spinEvolved && lvl(Upgrade::SPIN) >= 3 && lvl(Upgrade::SWORD) >= 3) {
-        session.evolveReady = Upgrade::SPIN;
-        SPDLOG_INFO("[OAV] spin fully maxed; the next elite kill grants the Great Spin Storm");
-    } else if (!bowEvolved && lvl(Upgrade::BOW) >= 3 && lvl(Upgrade::MAGIC) >= 2) {
-        session.evolveReady = Upgrade::BOW;
-        SPDLOG_INFO("[OAV] bow fully maxed; the next elite kill grants the Light Arrow Barrage");
+    for (const auto& def : sEvolutions) {
+        if (session.weaponEvolved[static_cast<int32_t>(def.weapon)]) {
+            continue;
+        }
+        if (lvl(def.weapon) >= 3 && lvl(def.passive) >= GetUpgradeMaxLevel(def.passive)) {
+            session.evolveReady = def.weapon;
+            SPDLOG_INFO("[OAV] {} + {} fully maxed; the next elite kill grants {}",
+                        GetUpgradeTitle(def.weapon), GetUpgradeTitle(def.passive), def.title);
+            return;
+        }
     }
 }
 
@@ -567,14 +591,12 @@ int32_t GetUpgradeMaxLevel(Upgrade id) {
 }
 
 const char* GetEvolutionTitle(Upgrade id) {
-    switch (id) {
-        case Upgrade::SPIN:
-            return "Great Spin Storm";
-        case Upgrade::BOW:
-            return "Light Arrow Barrage";
-        default:
-            return nullptr;
+    for (const auto& def : sEvolutions) {
+        if (def.weapon == id) {
+            return def.title;
+        }
     }
+    return nullptr;
 }
 
 // Elites are the only Iron Knuckles / Flare Dancers in the mode.
@@ -702,27 +724,32 @@ void UpdateSessionFrame() {
     CheckLevelUp(); // catch level-ups from any XP source
     CheckEvolutionReady();
 
-    // Test hook: OAV_AUTOEVOLVE=1 maxes both evolution pairs shortly after
-    // the run starts and blesses the weapons directly (headless verification).
+    // Test hook: OAV_AUTOEVOLVE=1 maxes all six evolution pairs shortly after
+    // the run starts, then blesses them in sequence (headless verification of
+    // every evolved weapon behavior).
     static bool sAutoEvolve = getenv("OAV_AUTOEVOLVE") != nullptr;
     if (sAutoEvolve) {
         Session& session = GetSession();
         if (session.frames == 600) {
-            session.upgradeLevels[static_cast<int32_t>(Upgrade::SPIN)] = 3;
-            session.upgradeLevels[static_cast<int32_t>(Upgrade::SWORD)] = 3;
-            session.upgradeLevels[static_cast<int32_t>(Upgrade::BOW)] = 3;
-            session.upgradeLevels[static_cast<int32_t>(Upgrade::MAGIC)] = 2;
+            for (const auto& def : sEvolutions) {
+                session.upgradeLevels[static_cast<int32_t>(def.weapon)] = 3;
+                session.upgradeLevels[static_cast<int32_t>(def.passive)] =
+                    GetUpgradeMaxLevel(def.passive);
+            }
             GrantWeapon(Upgrade::BOW);
+            GrantWeapon(Upgrade::DINS);
+            GrantWeapon(Upgrade::NAYRUS);
+            GrantWeapon(Upgrade::BOMBS);
+            GrantWeapon(Upgrade::HOOKSHOT);
             gSaveContext.isMagicAcquired = 1;
             gSaveContext.magicLevel = 1;
             gSaveContext.magic = 48;
-            if (session.evolveReady != Upgrade::NONE) {
-                PerformEvolution(session.evolveReady);
-            }
-        } else if (session.frames == 700 || session.frames == 800) {
-            if (session.evolveReady != Upgrade::NONE) {
-                PerformEvolution(session.evolveReady);
-            }
+        }
+        // Bless one armed pair every 100 frames; CheckEvolutionReady re-arms
+        // the next eligible weapon after each blessing.
+        if (session.frames > 600 && (session.frames % 100) == 0 &&
+            session.evolveReady != Upgrade::NONE) {
+            PerformEvolution(session.evolveReady);
         }
     }
     UpdateDirector();

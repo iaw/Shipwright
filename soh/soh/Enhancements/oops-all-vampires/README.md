@@ -43,8 +43,14 @@ entirely on Ocarina of Time's world and systems.
 When a weapon **and** its paired passive are both maxed, the next **elite**
 kill blesses the weapon (the HUD shows `EVOLUTION READY`):
 
-- **Spin L3 + Sword L3** → *Great Spin Storm* (magic charge, double recharge)
-- **Bow L3 + Magic L2** → *Light Arrow Barrage* (3-shot light-arrow burst)
+| Pair | Evolution | Effect |
+| --- | --- | --- |
+| Spin L3 + Sword L3 | *Great Spin Storm* | magic charge, double recharge |
+| Bow L3 + Magic L2 | *Light Arrow Barrage* | 3-shot light-arrow burst |
+| Din's L3 + Tunic L2 | *Cataclysm* | free casts at double rate |
+| Bombs L3 + Boots L2 | *Bomb Sprint* | bombs scatter at triple rate |
+| Hookshot L3 + Magnet L5 | *Chain Barrage* | double lash at double rate |
+| Nayru's L3 + Fairy L3 | *Ether Shield* | barrier regenerates hearts |
 
 Elites are marked with edge arrows on screen. They always drop a big XP gem
 and a heart.
