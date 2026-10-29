@@ -22,6 +22,96 @@ namespace {
 
 using namespace OAV;
 
+// Full-screen radar margin for the elite indicators (px).
+constexpr float ELITE_EDGE_PADDING = 40.0f;
+
+// Draws edge arrows pointing at every live elite so nothing important ever
+// lives silently off-screen. Elites are the mode's evolution carriers.
+void DrawEliteIndicators(Session& session) {
+    if (gPlayState == nullptr) {
+        return;
+    }
+    Camera* cam = GET_ACTIVE_CAM(gPlayState);
+    Player* player = GET_PLAYER(gPlayState);
+    if (cam == nullptr || player == nullptr) {
+        return;
+    }
+
+    // Camera facing yaw, then each elite's bearing relative to it.
+    float camYaw = Math_Atan2S(cam->at.x - cam->eye.x, cam->at.z - cam->eye.z) * (M_PI / 180.0f);
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+    float cx = displaySize.x * 0.5f;
+    float cy = displaySize.y * 0.5f;
+    float radius = cx - ELITE_EDGE_PADDING;
+    ImDrawList* dl = ImGui::GetForegroundDrawList();
+
+    for (Actor* actor = gPlayState->actorCtx.actorLists[ACTORCAT_ENEMY].head; actor != nullptr;
+         actor = actor->next) {
+        if (!IsEliteActor(actor)) {
+            continue;
+        }
+        float bearing = Math_Atan2S(actor->world.pos.x - player->actor.world.pos.x,
+                                     actor->world.pos.z - player->actor.world.pos.z) *
+                        (M_PI / 180.0f);
+        float angle = bearing - camYaw;
+
+        // Arrow head on the ring, pointing outward toward the elite.
+        float px = cx + sinf(angle) * radius;
+        float py = cy - cosf(angle) * radius;
+        float tipX = cx + sinf(angle) * (radius + 14.0f);
+        float tipY = cy - cosf(angle) * (radius + 14.0f);
+        float perpX = cosf(angle) * 9.0f;
+        float perpY = sinf(angle) * 9.0f;
+        ImU32 color = IM_COL32(255, 80, 120, 220);
+        dl->AddTriangleFilled(ImVec2(tipX, tipY), ImVec2(px - perpX, py - perpY),
+                              ImVec2(px + perpX, py + perpY), color);
+    }
+}
+
+// Inventory panel (top-left): every owned weapon and passive with its level,
+// plus the evolved state of blessed weapons.
+void DrawInventory(Session& session) {
+    bool anyOwned = false;
+    for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
+        if (session.upgradeLevels[i] > 0 || session.weaponEvolved[i]) {
+            anyOwned = true;
+            break;
+        }
+    }
+    if (!anyOwned) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(8.0f, 8.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(0, 0));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.55f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6.0f);
+
+    if (ImGui::Begin("OAV Inventory", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
+        for (int32_t i = 0; i < static_cast<int32_t>(Upgrade::COUNT_); i++) {
+            Upgrade id = static_cast<Upgrade>(i);
+            bool evolved = session.weaponEvolved[i];
+            if (session.upgradeLevels[i] <= 0 && !evolved) {
+                continue;
+            }
+            if (evolved) {
+                const char* evo = GetEvolutionTitle(id);
+                ImGui::TextColored(ImVec4(0.7f, 0.6f, 1.0f, 1.0f), "* %s", evo != nullptr ? evo : "");
+            } else {
+                ImGui::Text("%s %d/%d", GetUpgradeTitle(id), session.upgradeLevels[i],
+                            GetUpgradeMaxLevel(id));
+            }
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+}
+
 void DrawHud(Session& session) {
     ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 
@@ -53,8 +143,18 @@ void DrawHud(Session& session) {
 
         ImGui::SameLine();
         ImGui::Text("Wave %u", session.wave);
+
+        // Evolution hint: a maxed pair is waiting on its elite kill.
+        if (session.evolveReady != Upgrade::NONE) {
+            const char* evo = GetEvolutionTitle(session.evolveReady);
+            ImGui::TextColored(ImVec4(0.7f, 0.6f, 1.0f, 1.0f), "EVOLUTION READY: slay an ELITE! (%s)",
+                               evo != nullptr ? evo : "");
+        }
     }
     ImGui::End();
+
+    DrawInventory(session);
+    DrawEliteIndicators(session);
 
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();

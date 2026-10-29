@@ -1,6 +1,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
+#include "soh/Enhancements/oops-all-vampires/OopsAllVampiresConfig.h"
 #include "soh/SohGui/MenuTypes.h"
 #include "soh/SohGui/SohMenu.h"
 
@@ -75,6 +76,20 @@ void RegisterOopsAllVampiresMenu() {
                      .DefaultIndex(0)
                      .Tooltip("Hard multiplies spawn rates and enemy damage.")
                      .Color(Colors::Gray));
+
+    // Difficulty tuning: everything numeric lives in oops-all-vampires.json
+    // in the game folder and is re-read at each run start.
+    mSohMenu->AddWidget(path, "Difficulty Tuning (json)", WIDGET_SEPARATOR_TEXT);
+    mSohMenu->AddWidget(path, "All pacing knobs (run length, XP curve, spawn rates, elite "
+                              "schedule, enemy phase unlocks) live in oops-all-vampires.json in the game "
+                              "folder. Edits apply to the next run.",
+                        WIDGET_TEXT);
+    mSohMenu->AddWidget(path, "Reload Tuning File", WIDGET_BUTTON)
+        .Callback([](WidgetInfo& info) {
+            OAV::ReloadTuning();
+        })
+        .Options(ButtonOptions().Tooltip("Re-read oops-all-vampires.json now. A template is written "
+                                         "there on first launch if the file is missing."));
 }
 
 } // namespace

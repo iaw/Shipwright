@@ -11,6 +11,7 @@
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
+#include "soh/Enhancements/oops-all-vampires/OopsAllVampiresConfig.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampiresWindow.h"
 #include "soh/SaveManager.h"
 #include "soh/ShipInit.hpp"
@@ -76,8 +77,8 @@ const ArenaInfo* GetArenaInfo(Arena arena) {
 // XP curve -------------------------------------------------------------------
 
 uint32_t XpForLevelImpl(uint32_t level) {
-    // Level 1 -> 2 costs 50, each subsequent level costs 25 more.
-    return 25 + level * 25;
+    // Curve from the tuning file: base + level * perLevel.
+    return GetTuning().xpBase + level * GetTuning().xpPerLevel;
 }
 
 // Run bookkeeping ------------------------------------------------------------
@@ -201,6 +202,9 @@ void OAV_StartRun() {
     if (gGameState == nullptr) {
         return;
     }
+
+    // Pick up edits made to oops-all-vampires.json since the last run.
+    OAV::ReloadTuning();
 
     // Reset any previous session.
     OAV::sSession.Reset();

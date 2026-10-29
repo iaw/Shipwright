@@ -5,6 +5,7 @@
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/oops-all-vampires/OopsAllVampires.h"
+#include "soh/Enhancements/oops-all-vampires/OopsAllVampiresConfig.h"
 #include "soh/ShipInit.hpp"
 
 extern "C" {
@@ -29,45 +30,57 @@ namespace {
 struct EnemyDef {
     s16 actorId;
     s16 params;
-    uint32_t minFrame; // earliest spawn time (20 fps frames)
+    uint32_t tier;     // roster phase (1..7), unlocked at phaseSeconds[tier-1]
     s16 gemType;       // ITEM00_* gem dropped on defeat
     uint32_t weight;   // spawn weight
     bool elite;        // spawned by the elite timer only
 };
 
+// Earliest spawn frame for a tier, from the tuning file. The game clock
+// ticks at 20 fps (defined before the C headers provide FRAMES_PER_SECOND).
+uint32_t TierMinFrame(uint32_t tier) {
+    if (tier < 1) {
+        tier = 1;
+    }
+    if (tier > 7) {
+        tier = 7;
+    }
+    return GetTuning().phaseSeconds[tier - 1] * 20;
+}
+
 // clang-format off
 const EnemyDef sRoster[] = {
     // 0:00 - 2:00 — chaff
-    { ACTOR_EN_SKB,      1,     0,     ITEM00_RUPEE_GREEN,  10, false }, // Stalchild (small)
-    { ACTOR_EN_FIREFLY,  2,     0,     ITEM00_RUPEE_GREEN,  10, false }, // Keese
-    { ACTOR_EN_CROW,     0,     0,     ITEM00_RUPEE_GREEN,  10, false }, // Guay
+    { ACTOR_EN_SKB,       1,     1,      ITEM00_RUPEE_GREEN,  10, false }, // Stalchild (small)
+    { ACTOR_EN_FIREFLY,   2,     1,      ITEM00_RUPEE_GREEN,  10, false }, // Keese
+    { ACTOR_EN_CROW,      0,     1,      ITEM00_RUPEE_GREEN,  10, false }, // Guay
     // 2:00 - 5:00
-    { ACTOR_EN_FIREFLY,  1,  2400,     ITEM00_RUPEE_GREEN,   8, false }, // Fire Keese
-    { ACTOR_EN_BB,      -1,  1200,     ITEM00_RUPEE_GREEN,   8, false }, // Bubble
-    { ACTOR_EN_TITE,    -1,  1200,     ITEM00_RUPEE_GREEN,   8, false }, // Red Tektite
-    { ACTOR_EN_GOMA,     7,  1200,     ITEM00_RUPEE_GREEN,   6, false }, // Gohma Larva
+    { ACTOR_EN_FIREFLY,   1,     3,      ITEM00_RUPEE_GREEN,   8, false }, // Fire Keese
+    { ACTOR_EN_BB,       -1,     2,      ITEM00_RUPEE_GREEN,   8, false }, // Bubble
+    { ACTOR_EN_TITE,     -1,     2,      ITEM00_RUPEE_GREEN,   8, false }, // Red Tektite
+    { ACTOR_EN_GOMA,      7,     2,      ITEM00_RUPEE_GREEN,   6, false }, // Gohma Larva
     // 2:00 - 4:00
-    { ACTOR_EN_TITE,    -2,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Blue Tektite
-    { ACTOR_EN_PEEHAT,   1,  2400,     ITEM00_RUPEE_BLUE,    6, false }, // Peahat Larva
-    { ACTOR_EN_WF,       0,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Wolfos
-    { ACTOR_EN_DEKUBABA, 0,  2400,     ITEM00_RUPEE_BLUE,    8, false }, // Deku Baba (small)
+    { ACTOR_EN_TITE,     -2,     3,      ITEM00_RUPEE_BLUE,    8, false }, // Blue Tektite
+    { ACTOR_EN_PEEHAT,    1,     3,      ITEM00_RUPEE_BLUE,    6, false }, // Peahat Larva
+    { ACTOR_EN_WF,        0,     3,      ITEM00_RUPEE_BLUE,    8, false }, // Wolfos
+    { ACTOR_EN_DEKUBABA,  0,     3,      ITEM00_RUPEE_BLUE,    8, false }, // Deku Baba (small)
     // 4:00 - 6:00
-    { ACTOR_EN_TEST,     2,  4800,     ITEM00_RUPEE_RED,     8, false }, // Stalfos
-    { ACTOR_EN_RD,       1,  4800,     ITEM00_RUPEE_RED,     8, false }, // ReDead
-    { ACTOR_EN_RD,   32766,  4800,     ITEM00_RUPEE_RED,     6, false }, // Gibdo
-    { ACTOR_EN_SKB,     20,  4800,     ITEM00_RUPEE_RED,     6, false }, // Stalchild (big)
+    { ACTOR_EN_TEST,      2,     4,      ITEM00_RUPEE_RED,     8, false }, // Stalfos
+    { ACTOR_EN_RD,        1,     4,      ITEM00_RUPEE_RED,     8, false }, // ReDead
+    { ACTOR_EN_RD,    32766,     4,      ITEM00_RUPEE_RED,     6, false }, // Gibdo
+    { ACTOR_EN_SKB,      20,     4,      ITEM00_RUPEE_RED,     6, false }, // Stalchild (big)
     // 6:00 - 8:00
-    { ACTOR_EN_ZF,      -2,  7200,     ITEM00_RUPEE_RED,     8, false }, // Dinolfos
-    { ACTOR_EN_RR,       0,  7200,     ITEM00_RUPEE_RED,     6, false }, // Like-Like
-    { ACTOR_EN_ST,       1,  7200,     ITEM00_RUPEE_RED,     6, false }, // Big Skulltula
-    { ACTOR_EN_IK,       2,  7200,     ITEM00_RUPEE_PURPLE,  2, true  }, // Iron Knuckle (black)
+    { ACTOR_EN_ZF,       -2,     5,      ITEM00_RUPEE_RED,     8, false }, // Dinolfos
+    { ACTOR_EN_RR,        0,     5,      ITEM00_RUPEE_RED,     6, false }, // Like-Like
+    { ACTOR_EN_ST,        1,     5,      ITEM00_RUPEE_RED,     6, false }, // Big Skulltula
+    { ACTOR_EN_IK,        2,     5,      ITEM00_RUPEE_PURPLE,  2, true  }, // Iron Knuckle (black)
     // 8:00 - 12:00
-    { ACTOR_EN_IK,       3,  9600,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle (white)
-    { ACTOR_EN_FD,       0,  9600,     ITEM00_RUPEE_PURPLE,  2, true  }, // Flare Dancer
+    { ACTOR_EN_IK,        3,     6,      ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle (white)
+    { ACTOR_EN_FD,        0,     6,      ITEM00_RUPEE_PURPLE,  2, true  }, // Flare Dancer
     // 12:00+ — everything, heavier weights (final 18 minutes)
-    { ACTOR_EN_TEST,     2, 14400,     ITEM00_RUPEE_RED,    10, false }, // Stalfos (endless)
-    { ACTOR_EN_ZF,      -2, 14400,     ITEM00_RUPEE_RED,    10, false }, // Dinolfos (endless)
-    { ACTOR_EN_IK,       2, 14400,     ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle storm
+    { ACTOR_EN_TEST,      2,     7,      ITEM00_RUPEE_RED,    10, false }, // Stalfos (endless)
+    { ACTOR_EN_ZF,       -2,     7,      ITEM00_RUPEE_RED,    10, false }, // Dinolfos (endless)
+    { ACTOR_EN_IK,        2,     7,      ITEM00_RUPEE_PURPLE,  4, true  }, // Iron Knuckle storm
 };
 // clang-format on
 
@@ -77,7 +90,7 @@ constexpr uint32_t FRAMES_PER_SECOND = 20;
 // Settings ---------------------------------------------------------------
 
 int32_t GetSpawnCap() {
-    return CVarGetInteger(CVAR_ENHANCEMENT("OopsAllVampires.SpawnCap"), 35);
+    return (int32_t)GetTuning().spawnCap;
 }
 
 // Helpers -----------------------------------------------------------------
@@ -105,7 +118,7 @@ const EnemyDef* PickEnemy(bool elite) {
     std::vector<const EnemyDef*> candidates;
     uint64_t totalWeight = 0;
     for (const auto& def : sRoster) {
-        if (def.elite == elite && GetSession().frames >= def.minFrame) {
+        if (def.elite == elite && GetSession().frames >= TierMinFrame(def.tier)) {
             candidates.push_back(&def);
             totalWeight += def.weight;
         }
@@ -136,7 +149,7 @@ void SpawnEnemy(const EnemyDef* def) {
     // Spawn on a ring around the player, just outside the visible screen
     // (the field camera sees roughly 300-400 units around Link) so enemies
     // stream in from the screen edge instead of popping in far off-screen.
-    constexpr f32 radius = 430.0f;
+    const f32 radius = GetTuning().spawnRingRadius;
     f32 angle = Rand_ZeroOne() * 6.28318f;
     Vec3f pos;
     pos.x = player->actor.world.pos.x + cosf(angle) * radius;
@@ -164,7 +177,7 @@ void UpdateDirector() {
 
     // Surviving the full 30 minutes is a victory; the results screen takes
     // over from here (world freeze + stats, same as death).
-    if (session.frames >= RUN_LENGTH_SECONDS * FRAMES_PER_SECOND) {
+    if (session.frames >= GetTuning().runLengthSeconds * FRAMES_PER_SECOND) {
         session.victory = true;
         session.state = SessionState::GAME_OVER;
         SPDLOG_INFO("[OAV] survived the full run! ({} kills, level {})", session.kills, session.level);
@@ -183,11 +196,11 @@ void UpdateDirector() {
                     dbgPlayer != nullptr ? "ok" : "null");
     }
 
-    // Wave tier for the HUD (reaches 7 at ~30:00).
+    // Wave tier for the HUD.
     uint32_t seconds = session.frames / FRAMES_PER_SECOND;
-    session.wave = 1 + seconds / 300;
-    if (session.wave > 7) {
-        session.wave = 7;
+    session.wave = 1 + seconds / GetTuning().waveSecondsPerTier;
+    if (session.wave > GetTuning().waveMaxTier) {
+        session.wave = GetTuning().waveMaxTier;
     }
 
     const bool hard = session.difficulty == Difficulty::HARD;
@@ -202,9 +215,9 @@ void UpdateDirector() {
     if (hard) {
         interval = interval * 7 / 10;
     }
-    uint32_t batch = 2 + session.frames / 7000; // 2 -> 6 near the end
-    if (batch > 6) {
-        batch = 6;
+    uint32_t batch = GetTuning().spawnBatchStart + session.frames / GetTuning().spawnBatchRamp;
+    if (batch > GetTuning().spawnBatchMax) {
+        batch = GetTuning().spawnBatchMax;
     }
     if (hard) {
         batch += 1;
@@ -223,13 +236,13 @@ void UpdateDirector() {
         }
     }
 
-    // Elites: one every ~45 seconds from 4:00 onward (evolution carriers).
-    if (session.frames >= 240 * FRAMES_PER_SECOND) {
+    // Elites: evolution carriers, on the tuned schedule.
+    if (session.frames >= GetTuning().eliteStartSeconds * FRAMES_PER_SECOND) {
         if (session.eliteCooldown > 0) {
             session.eliteCooldown--;
         } else {
-            session.eliteCooldown = 45 * FRAMES_PER_SECOND;
-            for (int32_t i = 0; i < (hard ? 2 : 1); i++) {
+            session.eliteCooldown = GetTuning().eliteIntervalSeconds * FRAMES_PER_SECOND;
+            for (uint32_t i = 0; i < (hard ? GetTuning().eliteHardCount : 1); i++) {
                 SpawnEnemy(PickEnemy(true));
             }
             SPDLOG_INFO("[OAV] elite spawned (t={}s)", session.frames / FRAMES_PER_SECOND);
@@ -241,7 +254,7 @@ void UpdateDirector() {
 void DespawnDistantEnemies() {
     for (Actor* actor = gPlayState->actorCtx.actorLists[ACTORCAT_ENEMY].head; actor != nullptr;
          actor = actor->next) {
-        if (PlayerDistance2D(actor) > 3500.0f) {
+        if (PlayerDistance2D(actor) > GetTuning().despawnDistance) {
             Actor_Kill(actor);
         }
     }
@@ -516,6 +529,41 @@ const UpgradeDef sUpgrades[] = {
 };
 
 } // namespace
+
+// HUD helpers: names and levels of the run's upgrades.
+const char* GetUpgradeTitle(Upgrade id) {
+    for (const auto& def : sUpgrades) {
+        if (def.id == id) {
+            return def.title;
+        }
+    }
+    return "";
+}
+
+int32_t GetUpgradeMaxLevel(Upgrade id) {
+    for (const auto& def : sUpgrades) {
+        if (def.id == id) {
+            return def.maxLevel;
+        }
+    }
+    return 0;
+}
+
+const char* GetEvolutionTitle(Upgrade id) {
+    switch (id) {
+        case Upgrade::SPIN:
+            return "Great Spin Storm";
+        case Upgrade::BOW:
+            return "Light Arrow Barrage";
+        default:
+            return nullptr;
+    }
+}
+
+// Elites are the only Iron Knuckles / Flare Dancers in the mode.
+bool IsEliteActor(Actor* actor) {
+    return actor != nullptr && (actor->id == ACTOR_EN_IK || actor->id == ACTOR_EN_FD);
+}
 
 void GenerateLevelUpChoices() {
     Session& session = GetSession();

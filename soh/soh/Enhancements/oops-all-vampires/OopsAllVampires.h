@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+struct Actor; // z64 actor (defined in z64.h)
+
 namespace OAV {
 
 // Arena ("field") the run takes place in.
@@ -133,6 +135,12 @@ bool IsRunScene(int32_t sceneNum);
 
 // XP curve: cost of the next level.
 uint32_t XpForLevel(uint32_t level);
+
+// HUD helpers: upgrade names/levels and elite detection (director data).
+const char* GetUpgradeTitle(Upgrade id);
+int32_t GetUpgradeMaxLevel(Upgrade id);
+const char* GetEvolutionTitle(Upgrade id); // nullptr if not evolvable
+bool IsEliteActor(Actor* actor);           // elite carriers (IK / Flare Dancer)
 
 // Gem vacuum radius derived from the magnet upgrade level.
 float GetMagnetRadius();
