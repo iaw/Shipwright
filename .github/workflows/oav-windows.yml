@@ -41,11 +41,14 @@ jobs:
       run: |
         cmake -S . -B build-windows -G Ninja -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_BUILD_TYPE:STRING=Release
         cmake --build build-windows --config Release --parallel 4
-    - name: Package (zip, ROM-free)
+    - name: Package (cpack zip, ROM-free)
       run: |
-        Compress-Archive -Path build-windows/soh/* -DestinationPath oav-windows.zip
+        cd build-windows
+        cpack
+        cd ..
+        mv _packages/*.zip _packages/oav-windows.zip
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
         name: oav-windows
-        path: oav-windows.zip
+        path: _packages/oav-windows.zip
