@@ -66,8 +66,8 @@ void PressButton(uint32_t button) {
 
 // Hot-swaps the shared C-button slot to `item` and presses it.
 void FireCItem(s16 item, s16 slot) {
-    gSaveContext.equips.buttonItems[1] = item;   // C-left slot
-    gSaveContext.equips.cButtonSlots[0] = slot;
+    gSaveContext.equips.buttonItems[1] = (uint8_t)item; // C-left slot
+    gSaveContext.equips.cButtonSlots[0] = (uint8_t)slot;
     PressButton(BTN_CLEFT);
 }
 
